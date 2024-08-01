@@ -32,8 +32,8 @@
 #define debug_info(...) debug_info_real (__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__)
 #define debug_plist(a) debug_plist_real (__FUNCTION__, __FILE__, __LINE__, a)
 #else
-#define debug_info(...)
-#define debug_plist(a)
+#define debug_info(...) debug_info_real (__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__)
+#define debug_plist(a) debug_plist_real (__FUNCTION__, __FILE__, __LINE__, a)
 #endif
 
 void debug_info_real(const char *func,
