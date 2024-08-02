@@ -627,6 +627,7 @@ static idevice_error_t internal_connection_send(idevice_connection_t connection,
 	if (connection->type == CONNECTION_NETWORK) {
 		int s = socket_send((int)(long)connection->data, (void*)data, len);
 		if (s < 0) {
+			debug_info("ERROR: socket_send returned %d (%s)", s, strerror(s));
 			*sent_bytes = 0;
 			return IDEVICE_E_UNKNOWN_ERROR;
 		}
