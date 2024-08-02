@@ -144,7 +144,7 @@ LIBIMOBILEDEVICE_API service_error_t service_send(service_client_t client, const
 	debug_info("sending %d bytes", size);
 	res = idevice_to_service_error(idevice_connection_send(client->connection, data, size, &bytes));
 	if (res != SERVICE_E_SUCCESS) {
-		debug_info("ERROR: sending to device failed.");
+		debug_info("ERROR: sending to device failed. error code: %d", res);
 	}
 	if (sent) {
 		*sent = bytes;
