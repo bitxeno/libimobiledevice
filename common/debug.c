@@ -80,10 +80,7 @@ void debug_info_real(const char *func, const char *file, int line, const char *f
 #ifndef STRIP_DEBUG_CODE
 	va_list args;
 	char *buffer = NULL;
-
-	if (!debug_level)
-		return;
-
+	
 	/* run the real fprintf */
 	va_start(args, format);
 	(void)vasprintf(&buffer, format, args);
