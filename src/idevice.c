@@ -336,21 +336,7 @@ idevice_error_t idevice_get_device_list_extended(idevice_info_t **devices, int *
 			newlist[newcount]->conn_data = NULL;
 		} else if (dev_list[i].conn_type == CONNECTION_TYPE_NETWORK) {
 			newlist[newcount]->conn_type = CONNECTION_NETWORK;
-			struct sockaddr* saddr = (struct sockaddr*)(dev_list[i].conn_data);
-			size_t addrlen = 0;
-			switch (saddr->sa_family) {
-				case AF_INET:
-					addrlen = sizeof(struct sockaddr_in);
-					break;
-#ifdef AF_INET6
-				case AF_INET6:
-					addrlen = sizeof(struct sockaddr_in6);
-					break;
-#endif
-				default:
-					debug_info("Unsupported address family 0x%02x\n", saddr->sa_family);
-					continue;
-			}
+			size_t addrlen = dev_list[i].conn_data[0];
 			newlist[newcount]->conn_data = malloc(addrlen);
 			memcpy(newlist[newcount]->conn_data, dev_list[i].conn_data, addrlen);
 		}
@@ -452,23 +438,7 @@ static idevice_t idevice_from_mux_device(usbmuxd_device_info_t *muxdev)
 		break;
 	case CONNECTION_TYPE_NETWORK:
 		device->conn_type = CONNECTION_NETWORK;
-		struct sockaddr* saddr = (struct sockaddr*)(muxdev->conn_data);
-		size_t addrlen = 0;
-		switch (saddr->sa_family) {
-			case AF_INET:
-				addrlen = sizeof(struct sockaddr_in);
-				break;
-#ifdef AF_INET6
-			case AF_INET6:
-				addrlen = sizeof(struct sockaddr_in6);
-				break;
-#endif
-			default:
-				debug_info("Unsupported address family 0x%02x\n", saddr->sa_family);
-				free(device->udid);
-				free(device);
-				return NULL;
-		}
+		size_t addrlen = ((uint8_t*)muxdev->conn_data)[0];
 		device->conn_data = malloc(addrlen);
 		memcpy(device->conn_data, muxdev->conn_data, addrlen);
 		break;
@@ -557,16 +527,27 @@ idevice_error_t idevice_connect(idevice_t device, uint16_t port, idevice_connect
 		return IDEVICE_E_SUCCESS;
 	}
 	if (device->conn_type == CONNECTION_NETWORK) {
-		struct sockaddr* saddr = (struct sockaddr*)(device->conn_data);
-		switch (saddr->sa_family) {
-			case AF_INET:
+		struct sockaddr_storage saddr_storage;
+		struct sockaddr* saddr = (struct sockaddr*)&saddr_storage;
+
+		/* FIXME: Improve handling of this platform/host dependent connection data */
+		if (((char*)device->conn_data)[1] == 0x02) { // AF_INET
+			saddr->sa_family = AF_INET;
+			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 14);
+		}
+		else if (((char*)device->conn_data)[1] == 0x1E) { // AF_INET6 (bsd)
 #ifdef AF_INET6
-			case AF_INET6:
+			saddr->sa_family = AF_INET6;
+			/* copy the address and the host dependent scope id */
+			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 26);
+#else
+			debug_info("ERROR: Got an IPv6 address but this system doesn't support IPv6");
+			return IDEVICE_E_UNKNOWN_ERROR;
 #endif
-				break;
-			default:
-				debug_info("Unsupported address family 0x%02x", saddr->sa_family);
-				return IDEVICE_E_UNKNOWN_ERROR;
+		}
+		else {
+			debug_info("Unsupported address family 0x%02x", ((char*)device->conn_data)[1]);
+			return IDEVICE_E_UNKNOWN_ERROR;
 		}
 
 		char addrtxt[48];
